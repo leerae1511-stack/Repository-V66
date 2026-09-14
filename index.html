@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Pocket Generator V68"><title>Tool Pocket Generator V68</title>
+<style>
+*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f2f2f7;color:#111;margin:0}main{max-width:950px;margin:auto;padding:14px}.card{background:#fff;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 1px 5px #0001}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{font-size:13px;color:#555}input,button{width:100%;padding:12px;font-size:16px;border-radius:10px;border:1px solid #aaa;background:#fff}button{background:#111;color:#fff;border:0;margin-top:8px}.light{background:#eee;color:#111}.danger{background:#eee;color:#900}.small{font-size:13px;line-height:1.45;color:#666}.status{font-weight:600;margin-top:9px}.pass{font-weight:700}.warn{font-weight:700}.report{font-size:14px;line-height:1.5;margin-top:10px}.toolrow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #ddd}.toolmeta{font-size:13px;color:#555}.badge{display:inline-block;background:#eee;border-radius:8px;padding:4px 7px;font-size:12px}.canvasWrap{width:100%;overflow:auto;border-radius:10px}canvas{display:block;width:100%;height:auto;border:1px solid #999;border-radius:10px;background:#fff;touch-action:none}h1{margin-bottom:4px}
+
+.photoGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.segrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #ddd}.segrow select{padding:10px;font-size:15px;border:1px solid #aaa;border-radius:9px}.pointtools{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hint{padding:9px 11px;background:#f7f7f9;border-radius:10px;font-size:13px;color:#555}.mini{font-size:12px;color:#666}.curve{stroke-dasharray:7 5}.photoPreview{max-width:100%;border:1px solid #aaa;border-radius:10px;display:block}.inline{display:flex;gap:8px;align-items:end}.inline>*{flex:1}.ok{font-weight:700}.error{font-weight:700}.pill{display:inline-block;padding:3px 7px;border-radius:8px;background:#eee;font-size:12px;margin:2px}</style></head><body><script>if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}</script><main>
+<h1>Tool Pocket Generator V68</h1>
+<p class="small"><b>V68:</b> V25 physical-grid/outline workflow with the proven V30 independent FR1 + FR2 function. Entered Length × Width defines the master rectangle. Photo detection reads the metric ruler ticks on the uploaded photo to measure the tool only, then places that measured outline inside the master rectangle without changing the entered dimensions. Point editing, finger relief, geometry check and STL workflow are retained.</p>
+<div class="card"><h2>1. Tool</h2><div class="grid">
+<label>Tool name<input id="N" value="Tool Name"></label><label>Target length (mm)<input id="L" type="number" value="170.00" step="0.1" min="0.1"></label><label>Target width (mm)<input id="W" type="number" value="35.00" step="0.1" min="0.1"></label><label>Tray thickness / top reference (mm)<input id="T" type="number" value="12.00" step="0.1" min="0.1"></label><label>Pocket depth from tray top (mm)<input id="D" type="number" value="7.00" step="0.1" min="0.1"></label><label>Clearance each side (mm)<input id="C" type="number" value="1.00" step="0.1" min="0"></label></div>
+<button class="light" onclick="newTool()">New tool</button><button onclick="saveTool()">Save tool</button></div>
+<div class="card"><h2>2. Saved tools</h2><p class="small">Load a saved tool to continue editing it. Use <b>Save tool</b> to create a new tool or update the loaded tool.</p><div id="library"></div></div>
+<div class="card"><h2>3. Grid sheet</h2><p class="small">Use the grid as a visual measuring aid. A physical reference grid visible in the uploaded photo can also be used to estimate the tool dimensions and reset the master Length × Width. The on-screen photo grid is only a visual overlay and is not used for measurement.</p><div class="grid"><label><input id="gridOn" type="checkbox" style="width:auto" checked> Show grid sheet on profile</label><label><input id="photoGridOn" type="checkbox" style="width:auto"> Show grid overlay on uploaded picture</label></div><div class="grid"><label>Grid spacing (mm)<input id="gridSize" type="number" value="5" min="1" max="25" step="0.5"></label><div class="mini">For measurement, the uploaded photo must actually show the physical reference grid. The overlay is visual only.</div></div></div>
+<div class="card"><h2>4. Photo / picture import</h2><p class="small">Import a tool photo. V25 analyses the image for a tool-shaped foreground silhouette, suppresses thin/repetitive background-grid structure, and converts the detected outline into editable points. The photo is a reference. If a physical reference grid is visible, you can use it to calculate and reset the master Length × Width; you can then manually correct those values if required.</p>
+<input id="photoFile" type="file" accept="image/*"><div class="grid"><label>Profile scale %<input id="PS" type="number" value="100.00" min="50" max="150" step="0.01"></label><div><div class="mini">Use the physical-grid button to calculate/reset master dimensions from the uploaded photo.</div><div id="profileDims" class="status">Profile: 170.00 × 35.00 mm</div></div></div>
+<div class="grid"><button class="light" onclick="detectPhoto()">Detect tool outline</button><button class="light" onclick="setDimensionsFromPhotoGrid()">Set dimensions from physical grid</button></div><div class="grid"><button class="light" onclick="clearPhoto()">Remove photo</button><div id="gridMeasure" class="mini">Grid measurement: not yet calculated.</div></div><div id="photoStatus" class="status"></div><canvas id="photoCv" class="photoPreview" width="700" height="420" hidden></canvas>
+<div class="hint">For best detection, keep the tool clearly visible and avoid strong shadows. The detector suppresses thin repetitive grid/ruler lines and ignores border-connected background regions before choosing the tool-shaped foreground. The physical grid remains available for dimension calibration.</div></div>
+<div class="card"><h2>5. Draw / edit profile</h2><p class="small">The orange rectangle is the entered Length × Width reference frame. Draw the actual tool shape; it does not have to be drawn to screen scale. Points can be dragged. Use Add point, delete a point or delete a range, then reconnect automatically. Each segment can independently be Straight or Curved.</p>
+<div class="canvasWrap"><canvas id="cv" width="900" height="520"></canvas></div>
+<div class="grid"><button class="light" onclick="undo()">Undo</button><button class="light" onclick="clearP()">Clear</button></div>
+<div class="pointtools"><button class="light" onclick="startAddPoint()">Add point</button><button class="light" onclick="toggleEditMode()" id="editBtn">Drag points: ON</button></div>
+<div class="inline"><label>Delete from<input id="delA" type="number" min="1" step="1" value="1"></label><label>to<input id="delB" type="number" min="1" step="1" value="1"></label><button class="light" onclick="deleteRange()">Delete point / range</button></div>
+<div class="inline"><label>Insert after point<input id="insAfter" type="number" min="1" step="1" value="1"></label><button class="light" onclick="insertPoint()">Insert point</button></div>
+<div class="hint"><b>Undo:</b> Undo reverses only your edits, newest first. The generated/imported outline is the baseline and is never removed by Undo. <br>Tip: touching the orange reference-frame border does <b>not</b> add a point. Point editing is explicit: <b>drag an existing point to move it</b>, or use <b>Add point</b> to insert one. A normal tap on an existing point selects it for dragging rather than adding another point.</div>
+<div class="card" style="margin:12px 0 0 0;background:#fafafa"><h3 style="margin-top:0">Finger Relief Access</h3><p class="small">Finger reliefs are optional. You can use none, one, or two. Each relief is positioned independently by tapping the required place on the profile edge. FR1 and FR2 are the two independent relief locations.</p>
+<div class="grid"><label><input id="FR1" type="checkbox" style="width:auto"> Enable Finger Relief 1</label><label><input id="FR2" type="checkbox" style="width:auto"> Enable Finger Relief 2</label></div>
+<div class="grid"><label>FR1 width (mm)<input id="FR1W" type="number" value="18.00" min="1" step="0.5"></label><label>FR1 depth from tray top (mm)<input id="FR1D" type="number" value="3.00" min="0.1" step="0.5"></label></div>
+<div class="grid"><label>FR2 width (mm)<input id="FR2W" type="number" value="18.00" min="1" step="0.5"></label><label>FR2 depth from tray top (mm)<input id="FR2D" type="number" value="3.00" min="0.1" step="0.5"></label></div>
+<input id="FR1X" type="hidden" value="50"><input id="FR1Y" type="hidden" value="50"><input id="FR1SEG" type="hidden" value="-1"><input id="FR2X" type="hidden" value="50"><input id="FR2Y" type="hidden" value="50"><input id="FR2SEG" type="hidden" value="-1">
+<button class="light" onclick="startPlaceRelief(0)">Add / reposition FR1</button><button class="light" onclick="startPlaceRelief(1)">Add / reposition FR2</button><button class="light" onclick="deleteRelief(0)">Remove FR1</button><button class="light" onclick="deleteRelief(1)">Remove FR2</button>
+<div id="reliefPos" class="status">FR1: disabled / not placed · FR2: disabled / not placed</div><div id="reliefPoints" class="mini">Finger reliefs: none</div><div class="hint">Placement mode: tap the desired outline edge. Each relief remembers its own segment and exact position. You can place FR1 and FR2 in completely different locations, or use only one of them.</div></div><button class="light" onclick="confirmEditing()" id="confirmEditBtn">Confirm profile &amp; finger relief editing complete</button><div id="confirmStatus" class="status">Profile and finger relief editing not yet confirmed.</div>
+<div id="status" class="status">0 points</div><div id="segments"></div></div>
+<div class="card"><h2>6. Close profile &amp; scale</h2><p class="small">Final lock. Use this only after the numbered outline and any finger relief are correct.</p><button onclick="finish()" id="finishBtn" disabled>Close profile &amp; scale</button></div><div class="card" id="geometryCheck"><h2>7. Engineering geometry check</h2><p class="small">The check is performed after scaling and curve sampling, before STL export. It checks the profile and cleared profile for self-intersection, envelope limits and finger-relief placement.</p><button class="light" onclick="check()">Run geometry check</button><div id="report" class="report"></div></div>
+<div class="card" id="savedProfiles"><h2>8. Saved Profiles — JSON</h2><p class="small">Use these buttons to save or restore the current tool profile. An existing profile JSON can be imported here. JSON is the reusable profile file; it is not the STL used for printing.</p><div class="grid"><button class="light" onclick="exportProfile()">Export Profile JSON</button><button class="light" onclick="importProfile()">Import Profile JSON</button></div></div>
+<div class="card"><h2>9. STL test export</h2><p class="small">Exports the positive pocket-cut volume used in the tray workflow. The tool profile becomes the cut boundary after clearance, and enabled finger reliefs extend the cutter to their configured depth.</p><button onclick="exportSTL()">Export test profile STL</button></div>
+</main><script>const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),status=document.getElementById('status'),report=document.getElementById('report'),library=document.getElementById('library'),photoCv=document.getElementById('photoCv'),photoCtx=photoCv.getContext('2d');const $=id=>document.getElementById(id);let pts=[],closed=false,outlineClosed=false,currentId=null,scaled=null,modes=[],dragIndex=-1,editMode=true,adding=false,placingRelief=false,placingReliefIndex=-1,photoImg=null,profileScale=100,lastCheckSig='',editingConfirmed=false;
+let reliefs=[{enabled:false,seg:-1,t:0.5,x:50,y:50,width:18,depth:3},{enabled:false,seg:-1,t:0.5,x:50,y:50,width:18,depth:3}];
+let editHistory=[],dragStartState=null,dragStartLabel='';
+function q(){return{N:$('N').value.trim()||'Tool Name',L:+$('L').value||170,W:+$('W').value||35,T:+$('T').value||12,D:+$('D').value||7,C:+$('C').value||0}}
+function scaledProfile(){if(!scaled)return null;let k=profileScale/100;return scaled.map(v=>[v[0]*k,v[1]*k])}
+function finalDims(){let p=scaledProfile();return p?dim(p):[0,0]}
+function updateScaleUI(){let d=finalDims();$('profileDims').textContent='Profile: '+d[0].toFixed(2)+' × '+d[1].toFixed(2)+' mm · Scale correction: '+profileScale.toFixed(2)+'%'}
+function frame(){let a=q(),pad=55,s=Math.min((900-2*pad)/a.L,(520-2*pad)/a.W),x=(900-a.L*s)/2,y=(520-a.W*s)/2;return{...a,s,x,y,w:a.L*s,h:a.W*s}}
+function ptSeg(a,b,steps=10){let out=[];for(let i=0;i<=steps;i++){let t=i/steps;out.push([a[0]*(1-t)+b[0]*t,a[1]*(1-t)+b[1]*t])}return out}
+function catmull(p0,p1,p2,p3,t){let t2=t*t,t3=t2*t;return[0.5*((2*p1[0])+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*t2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*t3),0.5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)]}
+function sampled(p=scaled){if(!p||p.length<3)return[];let out=[];for(let i=0;i<p.length;i++){let j=(i+1)%p.length;if(i>0){}let seg=[];if(modes[i]==='curve'){let p0=p[(i-1+p.length)%p.length],p1=p[i],p2=p[j],p3=p[(j+1)%p.length];for(let k=0;k<12;k++)seg.push(catmull(p0,p1,p2,p3,k/12));}else seg=ptSeg(p[i],p[j],2);if(i)seg.shift();out.push(...seg)}return out}
+function drawGrid(c,f){if(!$('gridOn').checked)return;let g=Math.max(1,+$('gridSize').value||5),sx=f.s*g; c.save();c.beginPath();c.rect(f.x,f.y,f.w,f.h);c.clip();c.strokeStyle='#ddd';c.lineWidth=1;for(let x=f.x;x<=f.x+f.w+0.1;x+=sx){c.beginPath();c.moveTo(x,f.y);c.lineTo(x,f.y+f.h);c.stroke()}for(let y=f.y;y<=f.y+f.h+0.1;y+=sx){c.beginPath();c.moveTo(f.x,y);c.lineTo(f.x+f.w,y);c.stroke()}c.restore()}
+function draw(){let f=frame();ctx.clearRect(0,0,900,520);if(!pts.length){if($('confirmStatus'))$('confirmStatus').textContent='Editing not yet confirmed.';if($('finishBtn'))$('finishBtn').disabled=true;status.textContent='0 points';updateScaleUI();renderSegments();return}drawGrid(ctx,f);ctx.strokeStyle='#f60';ctx.lineWidth=3;ctx.strokeRect(f.x,f.y,f.w,f.h);ctx.fillStyle='#666';ctx.font='16px sans-serif';ctx.fillText(f.L.toFixed(1)+' mm',f.x+f.w/2-25,f.y-12);ctx.fillText(f.W.toFixed(1)+' mm',f.x-45,f.y+f.h/2);if(pts.length){if(closed&&scaled){let sp=sampled(base()),fd=dim(sp),ox=f.x+(f.w-fd[0]*f.s)/2,oy=f.y+(f.h-fd[1]*f.s)/2,sc=sp.map(v=>({x:ox+v[0]*f.s,y:oy+v[1]*f.s}));ctx.beginPath();sc.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.stroke();}else{ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));if(outlineClosed||closed)ctx.closePath();ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.stroke()}let occupied=[];pts.forEach((p,i)=>{ctx.fillStyle=i===dragIndex?'#c00':'#111';ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#666';ctx.font='11px sans-serif';let dx=8,dy=-7;if(pts.length>2){let prev=pts[(i-1+pts.length)%pts.length],next=pts[(i+1)%pts.length],vx=next.x-prev.x,vy=next.y-prev.y,n=Math.hypot(vx,vy)||1;dx=vx/n>=0?8:-28;dy=vy/n>=0?14:-7}let tx=p.x+dx,ty=p.y+dy,w=ctx.measureText(String(i+1)).width+4,h=13,tries=[[dx,dy],[8,14],[-28,14],[8,-18],[-28,-18],[14,0],[-34,0]];for(let k=0;k<tries.length;k++){let tdx=tries[k][0],tdy=tries[k][1],bx=p.x+tdx,by=p.y+tdy-h+3,box={x:bx-2,y:by,w,h};if(!occupied.some(o=>box.x<o.x+o.w&&box.x+box.w>o.x&&box.y<o.y+o.h&&box.y+box.h>o.y)){tx=bx;ty=by;occupied.push(box);break}}ctx.fillText(String(i+1),tx,ty)});if(pts.length>=2&&!closed){reliefs.forEach((r,idx)=>{if(!r.enabled||r.seg<0)return;let A=pts[r.seg],B=pts[(r.seg+1)%pts.length],rx=A.x+(B.x-A.x)*r.t,ry=A.y+(B.y-A.y)*r.t;ctx.strokeStyle='#06c';ctx.lineWidth=3;ctx.beginPath();ctx.arc(rx,ry,11,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#06c';ctx.font='bold 13px sans-serif';ctx.fillText('FR'+(idx+1),rx+12,ry-4);});}
+if(closed&&scaled){let a=q(),sp=sampled(base()),fd=dim(sp),ox=f.x+(f.w-fd[0]*f.s)/2,oy=f.y+(f.h-fd[1]*f.s)/2;reliefs.forEach((r,idx)=>{if(!r.enabled)return;let x=a.L*(+r.x||0)/100,y=a.W*(+r.y||0)/100;ctx.strokeStyle='#06c';ctx.lineWidth=3;ctx.beginPath();ctx.arc(ox+x*f.s,oy+y*f.s,10,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#06c';ctx.font='bold 12px sans-serif';ctx.fillText('FR'+(idx+1),ox+x*f.s+9,oy+y*f.s-8);});}
+}
+if($('confirmStatus'))$('confirmStatus').textContent=editingConfirmed?'Editing confirmed — ready for final Close profile & scale.':'Editing not yet confirmed.';if($('finishBtn'))$('finishBtn').disabled=!editingConfirmed||pts.length<3;status.textContent=pts.length+' points'+(closed?' — scaled profile ready':'')+(adding?' — tap canvas to add a point':'')+(placingRelief?' — tap the tool outline to place finger relief':'');updateScaleUI();renderSegments()}
+function nearestPoint(x,y){let best=-1,bd=18;pts.forEach((p,i)=>{let d=Math.hypot(p.x-x,p.y-y);if(d<bd){bd=d;best=i}});return best}
+function nearestProfilePoint(x,y){if(pts.length<2)return null;let best=null;for(let i=0;i<pts.length;i++){let j=(i+1)%pts.length,a=pts[i],b=pts[j],d=pointSegDist([x,y],[a.x,a.y],[b.x,b.y]);if(!best||d.d<best.d)best={d:d.d,p:[d.q[0],d.q[1]],i,t:d.t}}return best&&best.d<=40?best:null}
+function nearestBaseSegmentScreen(x,y){let hit=nearestProfilePoint(x,y);return hit?hit.i:-1}
+function startPlaceRelief(index){if(pts.length<3){report.textContent='Create at least 3 outline points before placing a finger relief.';return}placingRelief=true;placingReliefIndex=index;report.textContent='Tap/click the desired edge of the tool outline to place or reposition FR'+(index+1)+'.';draw()}
+function deleteRelief(index){let before=cloneState();placingRelief=false;placingReliefIndex=-1;reliefs[index]={enabled:false,seg:-1,t:0.5,x:50,y:50,width:reliefs[index].width||18,depth:reliefs[index].depth||3};lastCheckSig='';pushEdit('delete FR'+(index+1),before);updateReliefUI();report.textContent='FR'+(index+1)+' deleted.';draw();autosave()}
+function updateReliefUI(){if(!$('reliefPos'))return;let texts=reliefs.map((r,i)=>r.enabled&&r.seg>=0?'FR'+(i+1)+': Segment '+(r.seg+1)+' · '+Math.round(r.t*100)+'% along edge':'FR'+(i+1)+': disabled / not placed');$('reliefPos').textContent=texts.join(' · ');let names=reliefs.filter(r=>r.enabled&&r.seg>=0).map((r,i)=>'FR'+(reliefs.indexOf(r)+1));$('reliefPoints').textContent=names.length?'Finger reliefs: '+names.join(', '):'Finger reliefs: none';renderSegments()}
+cv.addEventListener('pointerdown',e=>{let r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*900/r.width,y=(e.clientY-r.top)*520/r.height;
+if(placingRelief){let hit=nearestProfilePoint(x,y);if(hit&&placingReliefIndex>=0){let idx=placingReliefIndex,before=cloneState(),mm=toMm([{x:hit.p[0],y:hit.p[1]}])[0],a=q(),r=reliefs[idx];r.x=+(mm[0]/a.L*100).toFixed(2);r.y=+(mm[1]/a.W*100).toFixed(2);r.seg=hit.i;r.t=hit.t;r.enabled=true;placingRelief=false;placingReliefIndex=-1;lastCheckSig='';pushEdit('place/reposition FR'+(idx+1),before);updateReliefUI();draw();autosave();return}}
+if(adding){let f=frame(),edgeTol=14;if(Math.abs(x-f.x)<edgeTol||Math.abs(x-(f.x+f.w))<edgeTol||Math.abs(y-f.y)<edgeTol||Math.abs(y-(f.y+f.h))<edgeTol){report.textContent='Reference-frame border ignored — no point added.';return}let before=cloneState(),idx=insertIndexForCanvas(x,y);pts.splice(idx,0,{x,y});modes.splice(idx,0,'straight');adding=false;editingConfirmed=false;closed=false;scaled=null;outlineClosed=pts.length>=3;lastCheckSig='';pushEdit('add Point '+(idx+1),before);report.textContent='Inserted a new outline point. Points renumbered automatically.';draw();autosave();return}
+if(!editMode||closed===true)return;
+let f=frame(),edgeTol=14;if(Math.abs(x-f.x)<edgeTol||Math.abs(x-(f.x+f.w))<edgeTol||Math.abs(y-f.y)<edgeTol||Math.abs(y-(f.y+f.h))<edgeTol){report.textContent='Reference-frame border ignored — no point added.';return}
+let hit=nearestPoint(x,y);if(hit>=0){dragIndex=hit;dragStartState=cloneState();dragStartLabel='move Point '+(hit+1);editingConfirmed=false;scaled=null;closed=false;outlineClosed=true;lastCheckSig='';report.textContent='Dragging point '+(hit+1)+'.';draw();return}
+report.textContent='Use Add point to insert a new point. A tap away from an existing point does not add one.';});
+cv.addEventListener('pointermove',e=>{if(dragIndex<0)return;let r=cv.getBoundingClientRect(),f=frame(),x=(e.clientX-r.left)*900/r.width,y=(e.clientY-r.top)*520/r.height;x=Math.max(f.x,Math.min(f.x+f.w,x));y=Math.max(f.y,Math.min(f.y+f.h,y));pts[dragIndex]={x,y};scaled=null;closed=false;outlineClosed=true;editingConfirmed=false;lastCheckSig='';draw();});
+function endDrag(){if(dragIndex>=0){let changed=JSON.stringify(dragStartState)!==JSON.stringify(cloneState());if(changed)pushEdit(dragStartLabel,dragStartState);dragIndex=-1;dragStartState=null;dragStartLabel='';draw();autosave()}}
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+
+function cloneState(){return JSON.parse(JSON.stringify({pts,modes,closed,outlineClosed,scaled,profileScale,editingConfirmed,reliefs}))}
+function restoreState(st){pts=(st.pts||[]).map(p=>({x:+p.x,y:+p.y}));modes=(st.modes||[]).slice();closed=!!st.closed;outlineClosed=st.outlineClosed!==undefined?!!st.outlineClosed:pts.length>=3;scaled=st.scaled?st.scaled.map(p=>[+p[0],+p[1]]):null;profileScale=+st.profileScale||100;editingConfirmed=!!st.editingConfirmed;reliefs=Array.isArray(st.reliefs)?st.reliefs.map((r,i)=>({enabled:!!r.enabled,seg:+(r.seg??-1),t:+(r.t??0.5),x:+(r.x??50),y:+(r.y??50),width:+(r.width??18),depth:+(r.depth??3)})): [{enabled:false,seg:-1,t:0.5,x:50,y:50,width:18,depth:3},{enabled:false,seg:-1,t:0.5,x:50,y:50,width:18,depth:3}];
+if(st.fingerRelief&&(!st.reliefs)){let fr=st.fingerRelief;reliefs[0]={enabled:!!fr.enabled,seg:+(fr.segment??-1),t:+(fr.t??0.5),x:+(fr.xPercent??50),y:+(fr.yPercent??50),width:+(fr.width??18),depth:+(fr.depth??3)};}lastCheckSig='';updateReliefUI();draw();autosave()}
+function resetEditHistory(){editHistory=[];dragStartState=null;dragStartLabel='';updateUndoUI()}
+function pushEdit(label,before){if(!before)return;editHistory.push({label,before:JSON.parse(JSON.stringify(before))});if(editHistory.length>100)editHistory.shift();updateUndoUI()}
+function undo(){if(!editHistory.length){report.textContent='Nothing to undo. Undo only reverses your edits; the generated/imported outline is the baseline.';return}let h=editHistory.pop();restoreState(h.before);report.textContent='Undid: '+h.label+'. The generated outline remains the baseline.';updateUndoUI()}
+function updateUndoUI(){let b=document.querySelector('button[onclick="undo()"]');if(b)b.textContent=editHistory.length?'Undo ('+editHistory.length+')':'Undo'}
+function clearP(){if(!pts.length)return;let before=cloneState();pts=[];modes=[];closed=false;scaled=null;outlineClosed=false;editingConfirmed=false;lastCheckSig='';pushEdit('clear profile',before);report.textContent='Profile cleared. Undo will restore the previous edited state.';draw();autosave()}
+function startAddPoint(){adding=true;closed=false;editingConfirmed=false;scaled=null;status.textContent='Tap canvas where the new point should go. Touching the orange frame border is ignored.';draw()}
+function toggleEditMode(){editMode=!editMode;$('editBtn').textContent='Drag points: '+(editMode?'ON':'OFF');draw()}
+function deleteRange(){if(!pts.length)return;let a=Math.max(1,parseInt($('delA').value||1)),b=Math.min(pts.length,parseInt($('delB').value||a));if(b<a)[a,b]=[b,a];let before=cloneState();let old=pts.slice(),oldModes=modes.slice();pts=old.filter((_,i)=>i+1<a||i+1>b);let newModes=Array(Math.max(0,pts.length)).fill('straight');if(pts.length){for(let i=0;i<pts.length;i++){let oi=(i<a-1?i:i+(b-a+1));newModes[i]=oldModes[Math.min(oldModes.length-1,oi)]||'straight'}}modes=newModes;reliefs.forEach(r=>{if(r.seg>=0){if(r.seg+1>=a&&r.seg+1<=b){r.seg=Math.max(0,Math.min(Math.max(0,pts.length-1),a-2));r.t=0.5;}else if(r.seg+1>b)r.seg-=b-a+1;}});closed=false;scaled=null;outlineClosed=pts.length>=3;editingConfirmed=false;pushEdit('delete Point '+a+(a!==b?'–'+b:''),before);lastCheckSig='';report.textContent='Deleted points '+a+'–'+b+'. The remaining outline reconnects automatically and points are renumbered.';draw();autosave()}
+function insertIndexForCanvas(x,y){if(!pts.length)return 0;let best=0,bd=Infinity;for(let i=0;i<pts.length;i++){let j=(i+1)%pts.length,a=pts[i],b=pts[j],d=pointSegDist([x,y],[a.x,a.y],[b.x,b.y]);if(d.d<bd){bd=d.d;best=i+1}}return Math.min(pts.length,best)}
+function insertPoint(){if(!pts.length){startAddPoint();return}let after=Math.max(1,Math.min(pts.length,parseInt($('insAfter').value||1))),idx=after,before=cloneState();let a=pts[after-1],b=pts[after%pts.length];pts.splice(idx,0,{x:(a.x+b.x)/2,y:(a.y+b.y)/2});modes.splice(idx,0,'straight');reliefs.forEach(r=>{if(r.seg>=idx)r.seg++;});closed=false;scaled=null;outlineClosed=true;editingConfirmed=false;pushEdit('insert Point '+(idx+1)+' after Point '+after,before);lastCheckSig='';report.textContent='Inserted point '+(idx+1)+'. Points were renumbered and the outline list updated.';draw();autosave()}
+function confirmEditing(){if(pts.length<3){$('confirmStatus').textContent='At least 3 points are required.';return}if(adding||dragIndex>=0||placingRelief){$('confirmStatus').textContent='Finish the current point/relief action before confirming.';return}editingConfirmed=true;$('confirmStatus').textContent='Profile and finger relief editing confirmed. You can now Close profile & scale.';report.textContent='Profile and finger relief editing confirmed. Finish the profile when ready.';draw();autosave()}
+function nearestBaseSegment(p){if(!p||!pts.length)return -1;let f=frame(),best=-1,bd=Infinity;for(let i=0;i<pts.length;i++){let a=toMm([pts[i]])[0],b=toMm([pts[(i+1)%pts.length]])[0],d=pointSegDist(p,a,b).d;if(d<bd){bd=d;best=i}}return best}
+function finish(){if(placingRelief){report.textContent='Finish placing the finger relief before closing and scaling the profile.';return}if(!editingConfirmed){report.textContent='Confirm point editing complete before closing and scaling the profile.';return}if(pts.length<3){status.textContent='At least 3 points required';return}let raw=toMm(pts),a=q();if(!raw.length){status.textContent='Profile has no measurable geometry';return}scaled=raw;profileScale=100;lastCheckSig='';if(modes.length!==pts.length)modes=Array(pts.length).fill('straight');closed=true;outlineClosed=true;draw();autosave();report.innerHTML='<b>Profile &amp; Finger Relief completed — profile closed and dimensions preserved.</b><br>Ready for Engineering Geometry Check.';setTimeout(()=>document.getElementById('geometryCheck')?.scrollIntoView({behavior:'smooth',block:'start'}),60)}
+
+function toMm(screenPts){let f=frame();return screenPts.map(p=>[(p.x-f.x)/f.s,(p.y-f.y)/f.s])}
+function base(){if(!closed||!scaled)return null;return scaledProfile().map(p=>p.slice())}
+function area(p){let s=0;for(let i=0;i<p.length;i++){let j=(i+1)%p.length;s+=p[i][0]*p[j][1]-p[j][0]*p[i][1]}return s/2}
+function cross(a,b,c){return(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])}
+function segHit(a,b,c,d){function orient(p,q,r){let vv=cross(p,q,r);return Math.abs(vv)<1e-8?0:vv>0?1:-1}let o1=orient(a,b,c),o2=orient(a,b,d),o3=orient(c,d,a),o4=orient(c,d,b);return o1*o2<0&&o3*o4<0}
+function selfInt(p){for(let i=0;i<p.length;i++){let a=p[i],b=p[(i+1)%p.length];for(let j=i+1;j<p.length;j++){if(j===i||j===(i+1)%p.length||(i===0&&j===p.length-1))continue;if(segHit(a,b,p[j],p[(j+1)%p.length]))return true}}return false}
+function norm(v){let n=Math.hypot(v[0],v[1]);return n?[v[0]/n,v[1]/n]:[0,0]}
+function lineIntersect(p1,d1,p2,d2){let cr=d1[0]*d2[1]-d1[1]*d2[0];if(Math.abs(cr)<1e-9)return null;let t=((p2[0]-p1[0])*d2[1]-(p2[1]-p1[1])*d2[0])/cr;return[p1[0]+t*d1[0],p1[1]+t*d1[1]]}
+function offset(p,d){let ccw=area(p)>0?1:-1,out=[];for(let i=0;i<p.length;i++){let prev=p[(i-1+p.length)%p.length],cur=p[i],next=p[(i+1)%p.length];let e1=norm([cur[0]-prev[0],cur[1]-prev[1]]),e2=norm([next[0]-cur[0],next[1]-cur[1]]);let n1=ccw===1?[e1[1],-e1[0]]:[-e1[1],e1[0]],n2=ccw===1?[e2[1],-e2[0]]:[-e2[1],e2[0]];let l1=[cur[0]+n1[0]*d,cur[1]+n1[1]*d],l2=[cur[0]+n2[0]*d,cur[1]+n2[1]*d];let x=lineIntersect(l1,e1,l2,e2);if(!x){let bis=norm([n1[0]+n2[0],n1[1]+n2[1]]);x=[cur[0]+bis[0]*d,cur[1]+bis[1]*d]}out.push(x)}return out}
+function pointSegDist(p,a,b){let vx=b[0]-a[0],vy=b[1]-a[1],wx=p[0]-a[0],wy=p[1]-a[1],vv=vx*vx+vy*vy,t=vv?Math.max(0,Math.min(1,(wx*vx+wy*vy)/vv)):0;let q=[a[0]+t*vx,a[1]+t*vy];return {d:Math.hypot(p[0]-q[0],p[1]-q[1]),t,q}}
+function fingerCutoutAt(p,a,target,w,depth){if(p.length<3)return p;w=Math.max(1,+w||18);depth=Math.max(.1,+depth||3);let best={d:Infinity,i:0,t:0,q:null};for(let i=0;i<p.length;i++){let j=(i+1)%p.length,r=pointSegDist(target,p[i],p[j]);if(r.d<best.d)best={d:r.d,i,t:r.t,q:r.q}}if(!best.q)return p;let i=best.i,j=(i+1)%p.length,A=p[i],B=p[j],edge=[B[0]-A[0],B[1]-A[1]],el=Math.hypot(edge[0],edge[1]);if(el<1)return p;let u=[edge[0]/el,edge[1]/el],ccw=area(p)>0,outward=ccw?[u[1],-u[0]]:[-u[1],u[0]],span=Math.min(w,el*.9),half=span/2,c=[A[0]+u[0]*(best.t*el),A[1]+u[1]*(best.t*el)],t0=Math.max(0,best.t*el-half),t1=Math.min(el,best.t*el+half);if(t1-t0<Math.min(4,span*.5))return p;let p0=[A[0]+u[0]*t0,A[1]+u[1]*t0],p1=[A[0]+u[0]*t1,A[1]+u[1]*t1],r=(t1-t0)/2,out=[...p.slice(0,i+1),p0],steps=24;for(let k=1;k<steps;k++){let tt=k/steps,ang=Math.PI*(1-tt),along=Math.cos(ang)*r,across=Math.sin(ang)*depth;out.push([c[0]+u[0]*along+outward[0]*across,c[1]+u[1]*along+outward[1]*across])}out.push(p1,...p.slice(j));return out}
+function applyFingerReliefs(p,a){let out=p;reliefs.forEach(r=>{if(!r.enabled)return;let target=[a.L*(+r.x||0)/100,a.W*(+r.y||0)/100];out=fingerCutoutAt(out,a,target,r.width,r.depth)});return out}
+function reliefDepthCheck(a){return reliefs.some(r=>r.enabled&&((+r.depth||0)>a.T+1e-9||(+r.depth||0)<=0))}
+function topReferencedLevels(a){return{top:a.T,pocketBottom:a.T-a.D}}
+function dim(p){return[Math.max(...p.map(v=>v[0]))-Math.min(...p.map(v=>v[0])),Math.max(...p.map(v=>v[1]))-Math.min(...p.map(v=>v[1]))]}
+function check(){if(!closed||!scaled){report.textContent='Close the profile first.';return false}let p=sampled(base()),a=q(),lv=topReferencedLevels(a),bad=selfInt(p),po=offset(p,a.C),badOff=selfInt(po),minx=Math.min(...po.map(v=>v[0])),maxx=Math.max(...po.map(v=>v[0])),miny=Math.min(...po.map(v=>v[1])),maxy=Math.max(...po.map(v=>v[1])),outside=minx<-0.01||miny<-0.01||maxx>Math.max(a.L,finalDims()[0])+0.01||maxy>Math.max(a.W,finalDims()[1])+0.01;
+let reliefWarn=false;let depthBad=a.D>a.T+1e-9||reliefDepthCheck(a)||a.D<=0;let rp=applyFingerReliefs(po,a),badRelief=selfInt(rp),fail=bad||badOff||outside||reliefWarn||badRelief||depthBad;let msg=fail?'<span class="warn">CHECK REQUIRED</span>':'<span class="pass">PASS</span>';let active=reliefs.filter(r=>r.enabled);report.innerHTML=msg+'<br>Master measurements: <b>'+a.L.toFixed(2)+' × '+a.W.toFixed(2)+' mm</b><br>Tray top reference: <b>Z='+lv.top.toFixed(2)+' mm</b><br>Final profile scale: <b>'+profileScale.toFixed(2)+'%</b><br>Final profile envelope: <b>'+dim(p)[0].toFixed(2)+' × '+dim(p)[1].toFixed(2)+' mm</b><br>Cleared envelope: <b>'+dim(po)[0].toFixed(2)+' × '+dim(po)[1].toFixed(2)+' mm</b><br>Main pocket: <b>'+a.D.toFixed(2)+' mm deep → Z='+lv.pocketBottom.toFixed(2)+' mm</b><br>'+active.map((r,i)=>'FR'+(reliefs.indexOf(r)+1)+': <b>'+r.depth.toFixed(2)+' mm deep → Z='+(a.T-r.depth).toFixed(2)+' mm</b><br>').join('')+'Clearance: <b>'+a.C.toFixed(2)+' mm/side</b><br>'+(bad?'Profile self-intersects after curve sampling. ':'')+(badOff?'Cleared profile self-intersects. ':'')+(outside?'Cleared profile exceeds the available envelope. ':'')+(depthBad?'Depths invalid: each relief depth must be positive and no greater than the tray thickness. ':'')+(badRelief?'Finger relief creates invalid geometry. ':'')+(!fail?'Geometry check passed.':'Review the profile, relief placement or depths before export.');lastCheckSig=geometrySig();updateReliefUI();return !fail}
+function geometrySig(){let a=q(),p=base();return JSON.stringify({N:a.N,L:a.L,W:a.W,T:a.T,D:a.D,C:a.C,scale:profileScale,p,modes,reliefs})}
+function tri(a,b,c){return`facet normal 0 0 0\n outer loop\n vertex ${a[0]} ${a[1]} ${a[2]}\n vertex ${b[0]} ${b[1]} ${b[2]}\n vertex ${c[0]} ${c[1]} ${c[2]}\n endloop\nendfacet\n`}
+function reliefGeometry(p,a,r){
+ if(!r.enabled||r.seg<0||p.length<3)return null;
+ let target=[a.L*(+r.x||0)/100,a.W*(+r.y||0)/100],w=Math.max(1,+r.width||18),depth=Math.max(.1,+r.depth||3),best={d:Infinity,i:0,t:0,q:null};
+ for(let i=0;i<p.length;i++){let j=(i+1)%p.length,d=pointSegDist(target,p[i],p[j]);if(d.d<best.d)best={d:d.d,i,t:d.t,q:d.q}}
+ if(!best.q)return null;let i=best.i,j=(i+1)%p.length,A=p[i],B=p[j],edge=[B[0]-A[0],B[1]-A[1]],el=Math.hypot(edge[0],edge[1]);if(el<1)return null;
+ let u=[edge[0]/el,edge[1]/el],ccw=area(p)>0,outward=ccw?[u[1],-u[0]]:[-u[1],u[0]],span=Math.min(w,el*.9),half=span/2,c=[A[0]+u[0]*(best.t*el),A[1]+u[1]*(best.t*el)],t0=Math.max(0,best.t*el-half),t1=Math.min(el,best.t*el+half);if(t1-t0<Math.min(4,span*.5))return null;
+ let p0=[A[0]+u[0]*t0,A[1]+u[1]*t0],p1=[A[0]+u[0]*t1,A[1]+u[1]*t1],rr=(t1-t0)/2,arc=[],steps=24;
+ for(let k=1;k<steps;k++){let tt=k/steps,ang=Math.PI*(1-tt),along=Math.cos(ang)*rr,across=Math.sin(ang)*depth;arc.push([c[0]+u[0]*along+outward[0]*across,c[1]+u[1]*along+outward[1]*across])}
+ let expanded=[...p.slice(0,i+1)];if(Math.hypot(expanded[expanded.length-1][0]-p0[0],expanded[expanded.length-1][1]-p0[1])>1e-9)expanded.push(p0);expanded.push(...arc);if(!expanded.length||Math.hypot(expanded[expanded.length-1][0]-p1[0],expanded[expanded.length-1][1]-p1[1])>1e-9)expanded.push(p1);expanded.push(...p.slice(j));return {expanded,cap:[p0,...arc,p1],baseA:p0,baseB:p1,depth};
+}
+function exportSTL(){
+  if(!closed){report.textContent='Close the profile first.';return}
+  let p=sampled(base()),a=q();
+  if(!p||p.length<3){report.textContent='Export stopped: no valid closed profile.';return}
+  if(lastCheckSig!==geometrySig()){if(!check()){report.textContent='Export stopped: Geometry Check must PASS before STL export.';return}}
+  if(area(p)<0)p=p.slice().reverse();
+  let po=offset(p,a.C);
+  if(selfInt(p)||selfInt(po)){report.textContent='Export stopped: geometry check failed due to self-intersection.';return}
+  let active=reliefs.map((r,i)=>({...r,index:i})).filter(r=>r.enabled&&r.seg>=0);
+  let reliefProfiles=[];
+  for(let r of active){
+    // Export only the added finger-relief cap. The complete expanded profile
+    // already contains the main pocket and would duplicate that volume here.
+    let rg=reliefGeometry(po,a,r),cap=rg&&rg.cap;
+    if(!cap||cap.length<3||selfInt(cap)){report.textContent='Export stopped: FR'+(r.index+1)+' creates invalid geometry.';return}
+    reliefProfiles.push({profile:cap,bottom:a.T-r.depth,depth:r.depth,index:r.index});
+  }
+  // Coordinates are centred only for the exported test volume; this does not alter
+  // the physical dimensions or shape. Z=0 is the tray floor and Z=T is the tray top.
+  let cx=(Math.min(...po.map(v=>v[0]))+Math.max(...po.map(v=>v[0])))/2;
+  let cy=(Math.min(...po.map(v=>v[1]))+Math.max(...po.map(v=>v[1])))/2;
+  function shift(poly){return poly.map(v=>[v[0]-cx,v[1]-cy])}
+  po=shift(po);reliefProfiles=reliefProfiles.map(r=>({...r,profile:shift(r.profile)}));
+  let st='solid ToolPocketV68\n';
+  function addPrism(poly,z0,z1){
+    if(!poly||poly.length<3||z1<=z0+1e-9)return;
+    let q=area(poly)<0?poly.slice().reverse():poly;
+    for(let i=1;i<q.length-1;i++){
+      st+=tri([q[0][0],q[0][1],z0],[q[i][0],q[i][1],z0],[q[i+1][0],q[i+1][1],z0]);
+      st+=tri([q[0][0],q[0][1],z1],[q[i+1][0],q[i+1][1],z1],[q[i][0],q[i][1],z1]);
+    }
+    for(let i=0;i<q.length;i++){
+      let j=(i+1)%q.length;
+      st+=tri([q[i][0],q[i][1],z0],[q[j][0],q[j][1],z0],[q[j][0],q[j][1],z1]);
+      st+=tri([q[i][0],q[i][1],z0],[q[j][0],q[j][1],z1],[q[i][0],q[i][1],z1]);
+    }
+  }
+  // Positive boolean-cut volume: Z=tray top is the reference surface.
+  // The main pocket occupies the material removed from tray top down to the
+  // configured pocket floor. Finger reliefs are shallower additions to that cut
+  // volume, extending outward from the profile only above their own relief floor.
+  let mainBottom=a.T-a.D;
+  addPrism(po,mainBottom,a.T);
+  for(let r of reliefProfiles) addPrism(r.profile,r.bottom,a.T);
+  st+='endsolid ToolPocketV68\n';
+  downloadText(st,a.N.replace(/[^a-z0-9_-]+/gi,'_')+'_V68_Test_Profile.stl','model/stl');
+  report.innerHTML='Exported pocket-cut STL. Profile = <b>'+dim(p)[0].toFixed(2)+' × '+dim(p)[1].toFixed(2)+' mm</b>; cleared profile = <b>'+dim(po)[0].toFixed(2)+' × '+dim(po)[1].toFixed(2)+' mm</b>; main pocket depth = <b>'+a.D.toFixed(2)+' mm</b>; finger reliefs = <b>'+active.length+'</b>.'
+}
+function downloadText(text,name,type){
+try{
+  const blob=new Blob([text],{type:type||'application/octet-stream'});
+  const u=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=u;
+  a.download=name;
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},2000);
+  report.textContent='Download started: '+name;
+}catch(e){
+  report.textContent='Download failed: '+e.message;
+  const w=window.open();
+  if(w){w.document.write('<pre>'+String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</pre>');}
+}
+}
+
+function exportProfile(){
+  if(pts.length<3){report.textContent='Draw at least 3 points first.';return}
+  let a=q(),photoData=null;
+  if(photoImg){
+    try{
+      let pc=document.createElement('canvas');
+      pc.width=photoImg.naturalWidth||photoImg.width;
+      pc.height=photoImg.naturalHeight||photoImg.height;
+      let px=pc.getContext('2d');
+      px.drawImage(photoImg,0,0);
+      photoData=pc.toDataURL('image/png');
+    }catch(e){report.textContent='JSON export failed: unable to capture the current photo.';return}
+  }
+  let data={
+    version:'V68',
+    name:a.N,targetLength:a.L,targetWidth:a.W,trayThickness:a.T,depth:a.D,clearance:a.C,
+    points:pts.map(p=>({x:p.x,y:p.y})),closed,outlineClosed,scaledProfile:scaled,
+    segmentModes:modes, fingerReliefs:reliefs, profileScalePercent:profileScale,
+    editingConfirmed,currentId,
+    gridOn:$('gridOn').checked,photoGridOn:$('photoGridOn').checked,gridSize:$('gridSize').value,
+    photoDataUrl:photoData
+  };
+  downloadText(JSON.stringify(data,null,2),a.N.replace(/[^a-z0-9_-]+/gi,'_')+'_V68_Profile.json','application/json');
+  report.textContent='Complete tool worksheet JSON download started.'
+}
+function importProfile(){
+  let input=document.createElement('input');input.type='file';input.accept='.json,application/json';
+  input.onchange=()=>{
+    let file=input.files[0];if(!file)return;
+    let r=new FileReader();
+    r.onload=()=>{
+      try{
+        let d=JSON.parse(r.result);
+        if(!Array.isArray(d.points)||d.points.length<3)throw Error('Invalid profile');
+        let oldL=+d.targetLength||100,oldW=+d.targetWidth||30,oldPad=55,
+            oldS=Math.min((900-2*oldPad)/oldL,(520-2*oldPad)/oldW),
+            oldX=(900-oldL*oldS)/2,oldY=(520-oldW*oldS)/2;
+        let rawMm=d.points.map(p=>[(p.x-oldX)/oldS,(p.y-oldY)/oldS]);
+        if(d.name!==undefined)$('N').value=d.name;
+        if(d.targetLength!==undefined)$('L').value=d.targetLength;
+        if(d.targetWidth!==undefined)$('W').value=d.targetWidth;
+        if(d.trayThickness!==undefined)$('T').value=d.trayThickness;
+        if(d.depth!==undefined)$('D').value=d.depth;
+        if(d.clearance!==undefined)$('C').value=d.clearance;
+        if(d.profileScalePercent!==undefined)profileScale=+d.profileScalePercent||100;
+        if(Array.isArray(d.fingerReliefs))reliefs=d.fingerReliefs.map(r=>({enabled:!!r.enabled,seg:+(r.seg??-1),t:+(r.t??0.5),x:+(r.x??50),y:+(r.y??50),width:+(r.width??18),depth:+(r.depth??3)}));
+        else if(d.fingerRelief)reliefs[0]={enabled:!!d.fingerRelief.enabled,seg:+(d.fingerRelief.segment??-1),t:+(d.fingerRelief.t??0.5),x:+(d.fingerRelief.xPercent??50),y:+(d.fingerRelief.yPercent??50),width:+(d.fingerRelief.width??18),depth:+(d.fingerRelief.depth??3)};
+        while(reliefs.length<2)reliefs.push({enabled:false,seg:-1,t:0.5,x:50,y:50,width:18,depth:3});
+        if(reliefs.length>2)reliefs=reliefs.slice(0,2);
+        if(d.gridOn!==undefined)$('gridOn').checked=!!d.gridOn;
+        if(d.photoGridOn!==undefined)$('photoGridOn').checked=!!d.photoGridOn;
+        if(d.gridSize!==undefined)$('gridSize').value=d.gridSize;
+        if(d.currentId!==undefined)currentId=d.currentId;
+        if(d.editingConfirmed!==undefined)editingConfirmed=!!d.editingConfirmed;
+        let nf=frame();pts=rawMm.map(p=>({x:nf.x+p[0]*nf.s,y:nf.y+p[1]*nf.s}));
+        modes=Array.isArray(d.segmentModes)&&d.segmentModes.length===pts.length?d.segmentModes.map(x=>x==='curve'?'curve':'straight'):Array(pts.length).fill('straight');
+        closed=!!d.closed;outlineClosed=d.outlineClosed!==undefined?!!d.outlineClosed:true;
+        scaled=Array.isArray(d.scaledProfile)?d.scaledProfile.map(p=>[+p[0],+p[1]]):null;
+        resetEditHistory();
+        let finish=()=>{updateReliefUI();draw();renderPhoto();autosave();report.textContent='Complete tool worksheet imported successfully. Everything is restored and remains editable.'};
+        if(d.photoDataUrl){
+          let im=new Image();
+          im.onload=()=>{photoImg=im;finish()};
+          im.onerror=()=>{report.textContent='Import failed: saved photo could not be restored.'};
+          im.src=d.photoDataUrl;
+        }else finish();
+      }catch(e){report.textContent='Import failed: '+e.message}
+    };
+    r.readAsText(file)
+  };
+  input.click()
+}
+function setSeg(i,v){if(i>=0&&i<modes.length&&modes[i]!== (v==='curve'?'curve':'straight')){let before=cloneState();modes[i]=v==='curve'?'curve':'straight';pushEdit('change Segment '+(i+1)+' to '+(v==='curve'?'Curved':'Straight'),before);editingConfirmed=false;lastCheckSig='';$('confirmStatus').textContent='Editing changed — confirm again before Close profile & scale.';draw();autosave()}}
+function renderSegments(){let el=$('segments');if(pts.length<3){el.innerHTML='';return}let h='<h3>Segment geometry</h3><div class="small">Each segment is independent. Segment '+pts.length+' connects point '+pts.length+' back to point 1. Changes remain visible; confirm editing when finished.</div>';for(let i=0;i<pts.length;i++){let j=(i+1)%pts.length,marks=reliefs.map((r,k)=>r.enabled&&r.seg===i?'<div class="mini"><b>Point '+(i+1)+' → FR'+(k+1)+' → Point '+(j+1)+'</b></div>':'').join('');h+='<div class="segrow"><div><b>Segment '+(i+1)+'</b><div class="mini">Point '+(i+1)+' → '+(j+1)+'</div>'+marks+'</div><select onchange="setSeg('+i+',this.value)"><option value="straight" '+(modes[i]==='straight'?'selected':'')+'>Straight</option><option value="curve" '+(modes[i]==='curve'?'selected':'')+'>Curved</option></select></div>'}el.innerHTML=h}
+function autosave(){localStorage.setItem('toolPocketV39',JSON.stringify({N:$('N').value,L:$('L').value,W:$('W').value,D:$('D').value,C:$('C').value,T:$('T').value,pts,closed,outlineClosed,scaled,currentId,modes,profileScalePercent:profileScale,editingConfirmed,gridOn:$('gridOn').checked,photoGridOn:$('photoGridOn').checked,gridSize:$('gridSize').value,reliefs}))}
+function restore(){
+ // V39 starts a fresh tool at the engineering defaults. A deliberate saved-tool
+ // load uses the library below; old V10/V11 autosave data is not imported.
+ $('N').value='Tool Name';$('L').value=170.00;$('W').value=35.00;$('D').value=7;$('C').value=1;$('T').value=12;
+ pts=[];modes=[];closed=false;outlineClosed=false;scaled=null;currentId=null;editingConfirmed=false;profileScale=100;placingRelief=false;placingReliefIndex=-1;
+ reliefs=[{enabled:false,seg:-1,t:0.5,x:50,y:50,width:18,depth:3},{enabled:false,seg:-1,t:0.5,x:50,y:50,width:18,depth:3}];
+ if($('gridOn'))$('gridOn').checked=true;if($('photoGridOn'))$('photoGridOn').checked=false;if($('gridSize'))$('gridSize').value=5;
+ draw();resetEditHistory();
+}
+function lib(){try{return JSON.parse(localStorage.getItem('toolPocketLibraryV25')||'[]')}catch(e){return[]}}function setLib(x){localStorage.setItem('toolPocketLibraryV25',JSON.stringify(x));renderLib()}
+function saveTool(){
+ try{
+  let a=q(),x=lib(),id=currentId||'t_'+Date.now(),item={id,name:a.N,L:a.L,W:a.W,T:a.T,D:a.D,C:a.C,points:pts,scaledProfile:Array.isArray(scaled)?scaled:null,segmentModes:modes,fingerReliefs:reliefs,profileScalePercent:profileScale,closed:!!closed,outlineClosed:!!outlineClosed};
+  let i=x.findIndex(t=>t.id===id);
+  if(i>=0)x[i]=item;else x.push(item);
+  currentId=id;
+  setLib(x);
+  renderLib();
+  autosave();
+  report.textContent='Saved '+a.N+' — '+a.L+' × '+a.W+' mm, tray '+a.T+' mm, pocket depth '+a.D+' mm. Section 2 updated.';
+ }catch(e){report.textContent='Save failed: '+e.message}
+}
+function loadTool(id){let t=lib().find(x=>x.id===id);if(!t)return;currentId=t.id;$('N').value=t.name;$('L').value=t.L;$('W').value=t.W;$('T').value=t.T||12;$('D').value=t.D;$('C').value=t.C;pts=t.points.map(p=>({x:+p.x,y:+p.y}));scaled=Array.isArray(t.scaledProfile)?t.scaledProfile.map(p=>[+p[0],+p[1]]):null;modes=Array.isArray(t.segmentModes)?t.segmentModes.map(x=>x==='curve'?'curve':'straight'):Array(pts.length).fill('straight');profileScale=+t.profileScalePercent||100;editingConfirmed=false;editHistory=[];reliefs=Array.isArray(t.fingerReliefs)?t.fingerReliefs.map(r=>({enabled:!!r.enabled,seg:+(r.seg??-1),t:+(r.t??0.5),x:+(r.x??50),y:+(r.y??50),width:+(r.width??18),depth:+(r.depth??3)})):reliefs;closed=!!t.closed;outlineClosed=!!t.outlineClosed;resetEditHistory();draw();autosave();report.textContent=scaled?'Loaded '+t.name+' — scaled profile '+dim(scaled)[0].toFixed(2)+' × '+dim(scaled)[1].toFixed(2)+' mm.':'Loaded '+t.name+' — saved dimensions restored; profile is not yet scaled.'}
+function delTool(id){setLib(lib().filter(x=>x.id!==id));if(currentId===id)newTool()}
+function renderLib(){let x=lib();library.innerHTML=x.length?x.map(t=>`<div class="toolrow"><div><b>${esc(t.name)}</b><div class="toolmeta">${t.L} × ${t.W} mm · tray ${t.T||12} · pocket ${t.D} · clearance ${t.C}${t.fingerRelief&&t.fingerRelief.enabled?' · finger relief':''}</div></div><button class="light" onclick="loadTool('${t.id}')">Load</button></div>`).join(''):'<div class="small">No saved tools yet.</div>'}
+function esc(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function newTool(){currentId=null;$('N').value='Tool Name';$('L').value=170.00;$('W').value=35.00;$('D').value=7;$('C').value=1;$('T').value=12;reliefs=[{enabled:false,seg:-1,t:0.5,x:50,y:50,width:18,depth:3},{enabled:false,seg:-1,t:0.5,x:50,y:50,width:18,depth:3}];placingRelief=false;placingReliefIndex=-1;editingConfirmed=false;profileScale=100;lastCheckSig='';pts=[];modes=[];closed=false;outlineClosed=false;scaled=null;resetEditHistory();report.textContent='';autosave();draw()}
+function renderPhoto(){if(!photoImg){photoCv.hidden=true;return}photoCv.hidden=false;photoCtx.clearRect(0,0,700,420);let sc=Math.min(680/photoImg.width,400/photoImg.height),w=photoImg.width*sc,h=photoImg.height*sc,ox=(700-w)/2,oy=(420-h)/2;photoCtx.drawImage(photoImg,ox,oy,w,h);if($('photoGridOn').checked){let g=Math.max(8,Math.round((+$('gridSize').value||5)*sc*2));photoCtx.save();photoCtx.beginPath();photoCtx.rect(ox,oy,w,h);photoCtx.clip();photoCtx.strokeStyle='#ffffff88';photoCtx.lineWidth=1;for(let x=ox;x<=ox+w+1;x+=g){photoCtx.beginPath();photoCtx.moveTo(x,oy);photoCtx.lineTo(x,oy+h);photoCtx.stroke()}for(let y=oy;y<=oy+h+1;y+=g){photoCtx.beginPath();photoCtx.moveTo(ox,y);photoCtx.lineTo(ox+w,y);photoCtx.stroke()}photoCtx.restore()}}
+$('gridOn').addEventListener('change',()=>{draw();autosave()});['FR1','FR2'].forEach((id,i)=>$(id).addEventListener('change',()=>{reliefs[i].enabled=$(id).checked;lastCheckSig='';updateReliefUI();draw();autosave()}));['FR1W','FR1D','FR2W','FR2D'].forEach(id=>$(id).addEventListener('input',()=>{let idx=id.startsWith('FR1')?0:1;reliefs[idx][id.endsWith('W')?'width':'depth']=+$(id).value||0;lastCheckSig='';draw();autosave()}));$('photoGridOn').addEventListener('change',()=>{renderPhoto();autosave()});$('gridSize').addEventListener('input',()=>{draw();renderPhoto();autosave()});
+$('photoFile').addEventListener('change',()=>{let f=$('photoFile').files[0];if(!f)return;let im=new Image();im.onload=()=>{photoImg=im;renderPhoto();$('photoStatus').textContent='Photo loaded. Tap Detect tool outline.'};im.src=URL.createObjectURL(f)})
+function clearPhoto(){photoImg=null;$('photoFile').value='';photoCtx.clearRect(0,0,photoCv.width,photoCv.height);photoCv.hidden=true;$('photoStatus').textContent='Photo removed.'}
+function boundaryLoop(mask,w,h){let edges=new Map();function key(x,y){return x+','+y}function add(a,b){let k=key(a[0],a[1]);if(!edges.has(k))edges.set(k,[]);edges.get(k).push(b)}for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(mask[y*w+x]){let up=y>0&&mask[(y-1)*w+x],right=x<w-1&&mask[y*w+x+1],down=y<h-1&&mask[(y+1)*w+x],left=x>0&&mask[y*w+x-1];if(!up)add([x,y],[x+1,y]);if(!right)add([x+1,y],[x+1,y+1]);if(!down)add([x+1,y+1],[x,y+1]);if(!left)add([x,y+1],[x,y])}let loops=[];while(edges.size){let startKey=edges.keys().next().value,start=startKey.split(',').map(Number),cur=start,loop=[start];for(let guard=0;guard<w*h*4;guard++){let k=key(cur[0],cur[1]),arr=edges.get(k);if(!arr||!arr.length)break;let next=arr.pop();if(!arr.length)edges.delete(k);cur=next;if(cur[0]===start[0]&&cur[1]===start[1]){loops.push(loop);break}loop.push(cur)} }return loops.sort((a,b)=>Math.abs(polyArea(b))-Math.abs(polyArea(a)))[0]||[]}
+function polyArea(p){let s=0;for(let i=0;i<p.length;i++){let j=(i+1)%p.length;s+=p[i][0]*p[j][1]-p[j][0]*p[i][1]}return s/2}
+function rdp(points,eps){if(points.length<3)return points.slice();let A=points[0],B=points[points.length-1],best=0,idx=0;for(let i=1;i<points.length-1;i++){let d=segDist(points[i],A,B);if(d>best){best=d;idx=i}}if(best>eps){let l=rdp(points.slice(0,idx+1),eps),r=rdp(points.slice(idx),eps);return l.slice(0,-1).concat(r)}return[A,B]}
+function segDist(p,a,b){let dx=b[0]-a[0],dy=b[1]-a[1];if(dx===0&&dy===0)return Math.hypot(p[0]-a[0],p[1]-a[1]);let t=((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy);t=Math.max(0,Math.min(1,t));return Math.hypot(p[0]-(a[0]+t*dx),p[1]-(a[1]+t*dy))}
+function imageGray(){
+ // Preserve the uploaded photo's aspect ratio. The previous build capped the
+ // height at 320 after calculating it, which vertically squashed portrait photos
+ // and made a long tool much harder to recognise.
+ let w=320,h=Math.max(140,Math.round(photoImg.height/photoImg.width*w));
+ let oc=document.createElement('canvas');oc.width=w;oc.height=h;let o=oc.getContext('2d');o.drawImage(photoImg,0,0,w,h);
+ let d=o.getImageData(0,0,w,h).data,g=new Uint8Array(w*h);
+ for(let i=0;i<g.length;i++){let j=i*4;g[i]=Math.round((d[j]*0.299)+(d[j+1]*0.587)+(d[j+2]*0.114))}
+ return {w,h,g};
+}
+function metricRulerPixelsPerMm(){
+ if(!photoImg)return null;
+ // V25 reads the metric ruler marks themselves. It does not infer a period from
+ // the repeated background grid. The long 10 mm ruler ticks are the calibration
+ // reference and must form a consistent sequence before a scale is accepted.
+ let rw=900,rh=Math.max(180,Math.round(photoImg.height/photoImg.width*rw));
+ let oc=document.createElement('canvas');oc.width=rw;oc.height=rh;let c=oc.getContext('2d');c.drawImage(photoImg,0,0,rw,rh);
+ let d=c.getImageData(0,0,rw,rh).data,g=new Float32Array(rw*rh);
+ for(let i=0;i<g.length;i++){let j=i*4;g[i]=d[j]*.299+d[j+1]*.587+d[j+2]*.114}
+ function median(a){if(!a.length)return 0;let b=a.slice().sort((x,y)=>x-y);return b[(b.length-1)>>1]}
+ function smooth(a,r=2){let o=new Float32Array(a.length);for(let i=0;i<a.length;i++){let s=0,n=0;for(let k=-r;k<=r;k++){let j=i+k;if(j>=0&&j<a.length){s+=a[j];n++}}o[i]=s/n}return o}
+ function longRunProjection(mode,y0,y1,x0,x1){
+   let n=mode==='vertical'?x1-x0:y1-y0,proj=new Float32Array(n),thr=155;
+   if(mode==='vertical'){
+     for(let x=x0;x<x1;x++){let best=0,cur=0;for(let y=y0;y<y1;y++){if(g[y*rw+x]<thr){cur++;if(cur>best)best=cur}else cur=0}proj[x-x0]=best}
+   }else{
+     for(let y=y0;y<y1;y++){let best=0,cur=0;for(let x=x0;x<x1;x++){if(g[y*rw+x]<thr){cur++;if(cur>best)best=cur}else cur=0}proj[y-y0]=best}
+   }
+   return proj;
+ }
+ function strongPeaks(proj){
+   let p=smooth(proj,1),mx=Math.max(...p),threshold=Math.max(18,mx*.55),out=[];
+   for(let i=3;i<p.length-3;i++)if(p[i]>=threshold&&p[i]>=p[i-1]&&p[i]>=p[i+1]){
+     let last=out[out.length-1];
+     if(last==null||i-last>=8)out.push(i);
+     else if(p[i]>p[last])out[out.length-1]=i;
+   }
+   return out;
+ }
+ function sequence(peaks,minP,maxP){
+   if(peaks.length<5)return null;
+   let best=null;
+   for(let p=minP;p<=maxP;p++){
+     let tol=Math.max(5,p*.10),bestCount=0,bestAnchor=peaks[0];
+     for(let a of peaks){let count=1;
+       for(let n=1;n<30;n++){let target=a+n*p,near=Infinity;for(let v of peaks){let e=Math.abs(v-target);if(e<near)near=e}if(near<=tol)count++;else if(target>peaks[peaks.length-1]+tol)break}
+       if(count>bestCount){bestCount=count;bestAnchor=a}
+     }
+     if(bestCount>=5&&(!best||bestCount>best.count||bestCount===best.count&&p>best.p))best={p,count:bestCount,anchor:bestAnchor};
+   }
+   if(!best)return null;
+   let matches=[];
+   for(let n=-30;n<=30;n++){let target=best.anchor+n*best.p,near=null,nd=Infinity;for(let v of peaks){let e=Math.abs(v-target);if(e<nd){nd=e;near=v}}if(near!=null&&nd<=Math.max(5,best.p*.10))matches.push(near)}
+   matches=[...new Set(matches)].sort((a,b)=>a-b);
+   if(matches.length<5)return null;
+   let dif=[];for(let i=1;i<matches.length;i++)dif.push(matches[i]-matches[i-1]);
+   let med=median(dif),good=dif.filter(v=>Math.abs(v-med)<=med*.12);
+   if(good.length<Math.max(4,Math.floor(dif.length*.7)))return null;
+   return med;
+ }
+ function bottom(){
+   let best=null;
+   for(let top of [.90,.91,.92,.93,.94]){let y0=Math.floor(rh*top),y1=Math.min(rh-1,y0+Math.floor(rh*.065));let p=strongPeaks(longRunProjection('vertical',y0,y1,0,rw));let sp=sequence(p,35,100);if(sp!=null&&(!best||sp>best))best=sp}
+   return best;
+ }
+ function left(){
+   let best=null;
+   for(let leftFrac of [.02,.03,.04,.05,.06]){let x0=Math.floor(rw*leftFrac),x1=Math.min(rw-1,x0+Math.floor(rw*.065));let p=strongPeaks(longRunProjection('horizontal',0,rh,x0,x1));let sp=sequence(p,35,100);if(sp!=null&&(!best||sp>best))best=sp}
+   return best;
+ }
+ let spacing=bottom();if(spacing==null)spacing=left();if(spacing==null)return null;
+ let ppm=(spacing/10)*(photoImg.width/rw);
+ return ppm>0.5&&ppm<20?ppm:null;
+}
+function gridPixelsPerMm(){return metricRulerPixelsPerMm()}
+function extractPhotoSilhouette(){
+ // V25 CLEAN OUTLINE ENGINE
+ // The detector is deliberately simple: isolate a solid tool-shaped foreground,
+ // trace one continuous outer perimeter, then simplify that ordered perimeter.
+ // Thin grid/ruler structure is removed by morphology before tracing.
+ let {w,h,g}=imageGray();
+ function morph(mask,r,op){
+   let out=new Uint8Array(w*h);
+   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+     let ok=op==='erode';
+     for(let yy=-r;yy<=r;yy++)for(let xx=-r;xx<=r;xx++){
+       let nx=x+xx,ny=y+yy,inside=nx>=0&&nx<w&&ny>=0&&ny<h,v=inside?mask[ny*w+nx]:0;
+       if(op==='erode'){if(!v){ok=false;yy=r;break}}
+       else if(v){ok=true}
+     }
+     out[y*w+x]=ok?1:0;
+   }
+   return out;
+ }
+ function openMask(mask,r){return morph(morph(mask,r,'erode'),r,'dilate')}
+ function dilate(mask,r){return morph(mask,r,'dilate')}
+ function closeMask(mask,r){return morph(morph(mask,r,'dilate'),r,'erode')}
+ function components(mask,minArea){
+   let seen=new Uint8Array(w*h),out=[],dirs=[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+   for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+     let s=y*w+x;if(!mask[s]||seen[s])continue;
+     let q=[s],comp=[],touch=false,minx=x,maxx=x,miny=y,maxy=y,sum=0;
+     seen[s]=1;
+     for(let qi=0;qi<q.length;qi++){
+       let n=q[qi],xx=n%w,yy=Math.floor(n/w);comp.push(n);sum+=g[n];
+       if(xx<=1||xx>=w-2||yy<=1||yy>=h-2)touch=true;
+       if(xx<minx)minx=xx;if(xx>maxx)maxx=xx;if(yy<miny)miny=yy;if(yy>maxy)maxy=yy;
+       for(let z of dirs){let nx=xx+z[0],ny=yy+z[1];if(nx<1||nx>=w-1||ny<1||ny>=h-1)continue;let ni=ny*w+nx;if(mask[ni]&&!seen[ni]){seen[ni]=1;q.push(ni)}}
+     }
+     if(comp.length<minArea||touch)continue;
+     let bw=maxx-minx+1,bh=maxy-miny+1,box=bw*bh,fill=comp.length/Math.max(1,box),aspect=Math.max(bw,bh)/Math.max(1,Math.min(bw,bh));
+     out.push({comp,area:comp.length,minx,miny,maxx,maxy,bw,bh,fill,aspect,mean:sum/comp.length});
+   }
+   return out;
+ }
+ function boundaryMoore(mask){
+   let p0=null;
+   for(let y=1;y<h-1&&!p0;y++)for(let x=1;x<w-1;x++)if(mask[y*w+x]&&!mask[y*w+x-1]){p0=[x,y];break}
+   if(!p0)return [];
+   const nb=[[-1,-1],[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0]];
+   const inside=(x,y)=>x>=0&&x<w&&y>=0&&y<h&&mask[y*w+x];
+   let p=p0.slice(),b=[p[0]-1,p[1]],startB=b.slice(),loop=[p.slice()];
+   for(let guard=0;guard<w*h*8;guard++){
+     let dx=b[0]-p[0],dy=b[1]-p[1],bi=nb.findIndex(v=>v[0]===dx&&v[1]===dy);if(bi<0)bi=7;
+     let found=null;
+     for(let k=1;k<=8;k++){let ni=(bi+k)%8,nx=p[0]+nb[ni][0],ny=p[1]+nb[ni][1];if(inside(nx,ny)){found={nx,ny,ni};break}}
+     if(!found)break;
+     let ni=found.ni;
+     b=[p[0]+nb[(ni+7)%8][0],p[1]+nb[(ni+7)%8][1]];
+     p=[found.nx,found.ny];
+     if(p[0]===p0[0]&&p[1]===p0[1]&&b[0]===startB[0]&&b[1]===startB[1])break;
+     loop.push(p.slice());
+   }
+   return loop;
+ }
+ function simplifyClosed(loop,eps){
+   if(loop.length<8)return loop.slice();
+   // Split the cyclic contour at a pair of far-apart perimeter points, then use
+   // ordinary RDP on the two open arcs. This preserves perimeter order and never
+   // asks RDP to simplify a path whose endpoints are identical.
+   let b=0,maxd=-1;
+   for(let i=1;i<loop.length;i++){let dx=loop[i][0]-loop[0][0],dy=loop[i][1]-loop[0][1],d=dx*dx+dy*dy;if(d>maxd){maxd=d;b=i}}
+   let a=0;maxd=-1;
+   for(let i=1;i<loop.length;i++){let dx=loop[i][0]-loop[b][0],dy=loop[i][1]-loop[b][1],d=dx*dx+dy*dy;if(d>maxd){maxd=d;a=i}}
+   if(a>b){let t=a;a=b;b=t}
+   let p1=loop.slice(a,b+1),p2=loop.slice(b).concat(loop.slice(0,a+1));
+   let r1=rdp(p1,eps),r2=rdp(p2,eps);if(r1.length>1)r1.pop();if(r2.length>1)r2.pop();
+   let out=r1.concat(r2);
+   // Cyclic cleanup removes only points that are nearly collinear with neighbours.
+   let changed=true;
+   while(changed&&out.length>18){changed=false;for(let i=0;i<out.length;i++){
+     let p=out[(i-1+out.length)%out.length],q=out[i],r=out[(i+1)%out.length];
+     if(segDist(q,p,r)<=Math.max(.8,eps*.12)){out.splice(i,1);changed=true;break}
+   }}
+   return out;
+ }
+ function buildMask(th,polarity){
+   let raw=new Uint8Array(w*h);
+   for(let i=0;i<raw.length;i++)raw[i]=polarity==='dark'?(g[i]<th?1:0):(g[i]>th?1:0);
+   // 5x5 opening is the deliberate grid/ruler suppression step.
+   return openMask(raw,2);
+ }
+ function candidateScore(c,polarity){
+   let pad=8,x0=Math.max(0,c.minx-pad),x1=Math.min(w-1,c.maxx+pad),y0=Math.max(0,c.miny-pad),y1=Math.min(h-1,c.maxy+pad),sum=0,n=0;
+   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)if(x<c.minx||x>c.maxx||y<c.miny||y>c.maxy){sum+=g[y*w+x];n++}
+   let ring=n?sum/n:128,contrast=polarity==='dark'?ring-c.mean:c.mean-ring;
+   let shape=Math.min(1,Math.max(.08,c.fill))*Math.min(1.6,Math.max(.5,c.aspect/2));
+   return c.area*Math.max(1,contrast)*shape;
+ }
+ let candidates=[];
+ for(let polarity of ['dark','light'])for(let th of (polarity==='dark'?[45,55,65,75,85]:[170,185,200,215,230])){
+   let mask=buildMask(th,polarity),cs=components(mask,Math.max(80,Math.floor(w*h*.001)));
+   for(let c of cs){
+     if(c.bw<15||c.bh<15||c.bw>w*.92||c.bh>h*.92||c.fill<.10||c.aspect>18)continue;
+     let score=candidateScore(c,polarity);
+     candidates.push({...c,score,mask,polarity,th});
+   }
+ }
+ if(!candidates.length)throw Error('No solid tool-shaped foreground found. Keep the whole tool inside the photo and avoid strong shadows.');
+ candidates.sort((a,b)=>b.score-a.score);
+ // Prefer the largest strong-contrast candidate rather than a thin ruler component.
+ let best=candidates[0];
+ let mask=new Uint8Array(w*h);best.comp.forEach(i=>mask[i]=1);
+ // One-pixel close repairs tiny breaks without creating long bridges.
+ mask=closeMask(mask,1);
+ let loop=boundaryMoore(mask);
+ if(loop.length<30)throw Error('Could not trace a continuous outer tool silhouette.');
+ // Simplify by geometric tolerance only. Do not target, limit, or reject
+ // any particular number of outline points: the required point count must
+ // follow the actual photographed tool shape.
+ const bestS=simplifyClosed(loop,2);
+ if(!bestS||bestS.length<3)throw Error('Could not simplify the tool silhouette to an editable profile.');
+ return {points:bestS,w,h};
+}
+function measuredToolFromPhoto(){
+ let ppm=metricRulerPixelsPerMm();
+ if(!ppm)throw Error('Could not read the metric ruler ticks. Keep the physical ruler/grid clearly visible in the photo.');
+ let sil=extractPhotoSilhouette(),scaleX=photoImg.width/sil.w,scaleY=photoImg.height/sil.h;
+ let px=sil.points.map(p=>({x:p[0]*scaleX,y:p[1]*scaleY})),minx=Math.min(...px.map(p=>p.x)),maxx=Math.max(...px.map(p=>p.x)),miny=Math.min(...px.map(p=>p.y)),maxy=Math.max(...px.map(p=>p.y));
+ return {ppm,points:px,minx,maxx,miny,maxy,widthPx:maxx-minx,heightPx:maxy-miny,widthMm:(maxx-minx)/ppm,heightMm:(maxy-miny)/ppm};
+}
+function setDimensionsFromPhotoGrid(){
+ if(!photoImg){$('photoStatus').textContent='Choose a photo first.';return}
+ try{
+  let m=measuredToolFromPhoto(),L=m.widthMm,W=m.heightMm;
+  if(L<W){let t=L;L=W;W=t}
+  if(!isFinite(L)||!isFinite(W)||L<5||W<2||L>1000||W>500)throw Error('Measured tool dimensions are outside the expected range. Check that the metric ruler is visible.');
+  // The entered rectangle is a working/reference frame. The edited outline is
+  // preserved in physical millimetres, then re-centred in the newly measured frame.
+  // No proportional scaling, point deletion or shape distortion is performed here.
+  let oldFrame=frame();
+  let physicalPts=pts.map(p=>[(p.x-oldFrame.x)/oldFrame.s,(p.y-oldFrame.y)/oldFrame.s]);
+  let oldA=q(), reliefPhysical=reliefs.map(r=>({x:oldA.L*(+r.x||0)/100,y:oldA.W*(+r.y||0)/100}));
+  // The completed outline is the physical object. Discard its old working-frame
+  // margins and place its own envelope inside the newly measured rectangle.
+  // This is translation only: no scale, distortion, clipping or point deletion.
+  let minX=Math.min(...physicalPts.map(p=>p[0])),maxX=Math.max(...physicalPts.map(p=>p[0])),minY=Math.min(...physicalPts.map(p=>p[1])),maxY=Math.max(...physicalPts.map(p=>p[1]));
+  let bw=maxX-minX,bh=maxY-minY;
+  // The orange rectangle is a reference frame, not a clipping boundary for the
+  // completed tool geometry. If manual edits make the physical outline larger
+  // than the photo-measured envelope, keep the measured Length × Width values and
+  // preserve the edited outline exactly in physical millimetres. Translation only;
+  // no scaling, distortion, clipping or point deletion.
+  $('L').value=L.toFixed(2);$('W').value=W.toFixed(2);
+  let newFrame=frame();
+  let shiftX=(L-bw)/2-minX,shiftY=(W-bh)/2-minY;
+  pts=physicalPts.map(p=>({x:newFrame.x+(p[0]+shiftX)*newFrame.s,y:newFrame.y+(p[1]+shiftY)*newFrame.s}));
+  reliefs.forEach((r,i)=>{if(!r.enabled)return;let rp=reliefPhysical[i];r.x=+(((rp.x+shiftX)/L)*100).toFixed(2);r.y=+(((rp.y+shiftY)/W)*100).toFixed(2)});
+  profileScale=100;lastCheckSig='';$('PS').value='100.00';$('gridMeasure').textContent='Physical ruler measurement: '+L.toFixed(2)+' × '+W.toFixed(2)+' mm · ruler scale '+m.ppm.toFixed(3)+' image px/mm.';$('photoStatus').textContent='Master dimensions set from the tool measured against the physical ruler. The edited outline and finger-relief positions were preserved physically and re-centred in the new reference frame. The outline may extend beyond the orange reference rectangle; the rectangle is not a clipping boundary. Review, then Close profile & scale and run Geometry Check.';draw();autosave();
+ }catch(e){$('gridMeasure').textContent='Ruler measurement: failed.';$('photoStatus').textContent='Grid measurement failed: '+e.message}
+}
+function detectPhoto(){
+ if(!photoImg){$('photoStatus').textContent='Choose a photo first.';return}
+ $('photoStatus').textContent='Analysing photo… measuring the tool from the physical ruler…';
+ setTimeout(()=>{try{
+   let m=measuredToolFromPhoto(),f=frame(),tw=m.widthMm,th=m.heightMm;
+   // Keep the master rectangle independent. The measured tool is centred inside
+   // it at its physical size; no fill-to-frame scaling is performed.
+   let ox=f.x+(f.w-tw*f.s)/2,oy=f.y+(f.h-th*f.s)/2;
+   pts=m.points.map(p=>({x:ox+(p.x-m.minx)/m.ppm*f.s,y:oy+(p.y-m.miny)/m.ppm*f.s}));
+   modes=Array(pts.length).fill('straight');closed=false;outlineClosed=pts.length>=3;scaled=null;resetEditHistory();profileScale=100;lastCheckSig='';draw();autosave();
+   let oversize=tw>q().L+.01||th>q().W+.01;
+   $('photoStatus').textContent='Outline generated from the physical ruler at measured tool size '+tw.toFixed(2)+' × '+th.toFixed(2)+' mm. Master rectangle remains '+q().L.toFixed(2)+' × '+q().W.toFixed(2)+' mm.'+(oversize?' The measured tool is larger than the master rectangle; enlarge the rectangle if required.':'');
+   $('gridMeasure').textContent='Physical ruler measurement: '+tw.toFixed(2)+' × '+th.toFixed(2)+' mm · ruler scale '+m.ppm.toFixed(3)+' image px/mm.';
+ }catch(e){$('photoStatus').textContent='Photo outline failed: '+e.message}},40)
+}
+['N','L','W','T','D','C','PS'].forEach(id=>$(id).addEventListener('input',()=>{if(id==='PS'){profileScale=Math.max(50,Math.min(150,+$('PS').value||100));lastCheckSig='';updateScaleUI()}else if(['L','W'].includes(id)){lastCheckSig='';updateScaleUI()}draw();autosave()}));$('PS').addEventListener('change',()=>{$('PS').value=profileScale.toFixed(2);draw();autosave()});restore();$('PS').value=profileScale.toFixed(2);updateScaleUI();renderLib();</script></body></html>
